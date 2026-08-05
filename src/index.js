@@ -166,6 +166,12 @@ async function main() {
 
     if (cfg.once) {
       await seen.save();
+      if (consecutiveErrors > 0) {
+        // Exiting 0 here would paint a green check over a check that never
+        // actually ran — the worst possible failure mode for a monitor.
+        log.error('single-run mode: check FAILED, exiting non-zero');
+        process.exit(1);
+      }
       log.info('single-run mode: done');
       break;
     }
