@@ -1,3 +1,5 @@
+import { proxyFetch } from './proxy.js';
+
 const ENDPOINT = 'https://hiring.amazon.com/graphql';
 
 const SEARCH_JOBS = `query searchJobCardsByLocation($searchJobRequest: SearchJobRequest!) {
@@ -94,7 +96,7 @@ export class AmazonHiring {
 
   async #gql(operationName, query, variables, { retryOnWaf = true } = {}) {
     const cookie = await this.session.cookies();
-    const res = await fetch(ENDPOINT, {
+    const res = await proxyFetch(ENDPOINT, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',

@@ -13,7 +13,7 @@
  * Writes working entries to proxies.working.txt.
  */
 import fs from 'fs';
-import { parseProxyLine } from '../src/proxy.js';
+import { parseProxyLine, proxyFetch } from '../src/proxy.js';
 
 const UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
@@ -56,7 +56,7 @@ async function test(line) {
   if (!proxy) return null;
 
   try {
-    const res = await fetch(TARGET, {
+    const res = await proxyFetch(TARGET, {
       headers: {
         'user-agent': UA,
         accept: 'text/html,application/xhtml+xml',

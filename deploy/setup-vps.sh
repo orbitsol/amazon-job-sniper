@@ -1,3 +1,4 @@
+
 #!/usr/bin/env bash
 # One-shot setup for a fresh Ubuntu box (Oracle Always Free, GCP e2-micro, any VPS).
 # Installs Node, Chromium's system libraries, adds swap, and registers a systemd

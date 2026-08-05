@@ -4,7 +4,7 @@
  * GraphQL call succeeds. Run locally and on the target host to compare.
  */
 import { chromium } from 'playwright';
-import { ProxyPool } from '../src/proxy.js';
+import { ProxyPool, proxyFetch } from '../src/proxy.js';
 
 const UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
@@ -20,7 +20,7 @@ const pool = ProxyPool.fromConfig({
 const proxy = pool?.current() ?? null;
 console.log('proxy    :', proxy ? `${proxy.label} (${pool.size} in pool)` : 'none (direct)');
 
-const ip = await fetch('https://api.ipify.org?format=json', {
+const ip = await proxyFetch('https://api.ipify.org?format=json', {
   dispatcher: proxy?.dispatcher,
 })
   .then((r) => r.json())
@@ -80,7 +80,7 @@ console.log(bodyText.replace(/\n{2,}/g, '\n'));
 
 // Does the API actually work from here?
 if (token) {
-  const res = await fetch('https://hiring.amazon.com/graphql', {
+  const res = await proxyFetch('https://hiring.amazon.com/graphql', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',

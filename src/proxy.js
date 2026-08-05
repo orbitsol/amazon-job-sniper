@@ -1,5 +1,13 @@
 import fs from 'fs';
-import { ProxyAgent } from 'undici';
+import { ProxyAgent, fetch as undiciFetch } from 'undici';
+
+/**
+ * Node's global fetch is backed by its own bundled undici, which rejects a
+ * dispatcher created by the separately-installed undici package
+ * ("invalid onRequestStart method"). Always pair undici's fetch with undici's
+ * ProxyAgent, or proxied requests fail with an opaque "fetch failed".
+ */
+export const proxyFetch = undiciFetch;
 
 /**
  * Optional egress proxy. Amazon blocks cloud datacenter IPs at CloudFront
