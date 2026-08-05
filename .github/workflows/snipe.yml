@@ -15,6 +15,10 @@ on:
         description: 'Send a fake listing to Discord to verify the webhook works'
         type: boolean
         default: false
+      diagnose:
+        description: 'Report what Amazon serves this runner (WAF debugging)'
+        type: boolean
+        default: false
 
 # Never let two checks overlap — that would double-ping.
 concurrency:
@@ -76,8 +80,12 @@ jobs:
           DISCORD_USER_ID: ${{ secrets.DISCORD_USER_ID }}
         run: node scripts/test-discord.js
 
+      - name: Diagnose WAF
+        if: ${{ inputs.diagnose }}
+        run: node scripts/diagnose-waf.js
+
       - name: Check for openings
-        if: ${{ !inputs.test_ping }}
+        if: ${{ !inputs.test_ping && !inputs.diagnose }}
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           DISCORD_USER_ID: ${{ secrets.DISCORD_USER_ID }}
