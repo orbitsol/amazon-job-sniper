@@ -66,7 +66,7 @@ async function main() {
     log,
   });
 
-  let firstRun = seen.size === 0;
+  let firstRun = !seen.baselined;
   if (firstRun && !cfg.alertOnFirstRun) {
     log.info('first run: recording current openings as baseline (no pings for these)');
   }
@@ -151,6 +151,8 @@ async function main() {
       cycles += 1;
 
       if (firstRun) {
+        seen.markBaselined();
+        await seen.save();
         log.info(`baseline recorded: ${jobs.length} job(s), ${seen.size} shift(s) — now sniping`);
         firstRun = false;
       } else if (newCount === 0 && cycles % 10 === 0) {

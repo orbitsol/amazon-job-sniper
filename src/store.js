@@ -1,6 +1,8 @@
 import fs from 'fs/promises';
 import path from 'path';
 
+const BASELINE_KEY = '__baselined__';
+
 /**
  * Remembers which schedules we've already alerted on so a restart doesn't
  * re-ping everything. Entries expire so a shift that vanishes and genuinely
@@ -30,17 +32,34 @@ export class SeenStore {
     return this.map.has(key);
   }
 
+  /**
+   * Whether a baseline has ever been completed. Deliberately not "is the store
+   * empty" — a quiet area legitimately has zero openings for days, and treating
+   * every run as a first run would silently swallow the very first posting.
+   */
+  get baselined() {
+    return this.map.has(BASELINE_KEY);
+  }
+
+  markBaselined() {
+    // Re-stamped on every save so the TTL sweep never expires it.
+    this.map.set(BASELINE_KEY, Date.now());
+  }
+
   add(key) {
     this.map.set(key, Date.now());
   }
 
   get size() {
-    return this.map.size;
+    return this.map.has(BASELINE_KEY) ? this.map.size - 1 : this.map.size;
   }
 
   async save() {
     const cutoff = Date.now() - this.ttlMs;
-    for (const [k, ts] of this.map) if (ts <= cutoff) this.map.delete(k);
+    for (const [k, ts] of this.map) {
+      if (k !== BASELINE_KEY && ts <= cutoff) this.map.delete(k);
+    }
+    if (this.map.has(BASELINE_KEY)) this.markBaselined();
     await fs.mkdir(path.dirname(this.file), { recursive: true });
     const tmp = `${this.file}.tmp`;
     await fs.writeFile(tmp, JSON.stringify(Object.fromEntries(this.map), null, 0));
