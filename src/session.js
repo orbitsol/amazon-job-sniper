@@ -24,9 +24,16 @@ const WARMUP_URL = 'https://hiring.amazon.com/search/warehouse-jobs';
 const DEFAULT_MAX_AGE = 12 * 60 * 60 * 1000; // 12h, well inside the 96h TTL
 
 export class Session {
-  constructor({ log, pool = null, maxAgeMs = DEFAULT_MAX_AGE, cacheFile = null }) {
+  constructor({
+    log,
+    pool = null,
+    maxAgeMs = DEFAULT_MAX_AGE,
+    cacheFile = null,
+    tokenTimeoutMs = 90000,
+  }) {
     this.log = log;
     this.pool = pool;
+    this.tokenTimeoutMs = tokenTimeoutMs;
     this.maxAgeMs = maxAgeMs;
     this.cacheFile = cacheFile;
     this.cookieHeader = null;
@@ -91,6 +98,7 @@ export class Session {
 
   async #harvest() {
     this.log.info('session: harvesting fresh WAF token via headless browser (~14MB)...');
+    const startedAt = Date.now();
     let browser;
     try {
       browser = await chromium.launch({
@@ -103,21 +111,18 @@ export class Session {
       const ctx = await browser.newContext({ userAgent: UA, locale: 'en-US' });
       const page = await ctx.newPage();
 
-      // Wait until the site itself successfully calls its GraphQL endpoint —
-      // that is the signal that the WAF challenge has actually been solved.
-      const solved = page
-        .waitForResponse(
-          (r) => r.request().url() === 'https://hiring.amazon.com/graphql' && r.status() === 200,
-          { timeout: 45000 }
-        )
-        .catch(() => null);
+      await page.goto(WARMUP_URL, { waitUntil: 'domcontentloaded', timeout: 90000 });
 
-      await page.goto(WARMUP_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
-      await solved;
-      // Let the WAF SDK finish writing its final token.
-      await page.waitForTimeout(3000);
-
-      const cookies = await ctx.cookies();
+      // Poll for the token rather than assuming it lands a fixed moment after
+      // the first GraphQL call. Direct connections issue it in ~4s, but a
+      // residential proxy can take 20s+, and a fixed wait silently gave up.
+      let cookies = [];
+      const deadline = Date.now() + this.tokenTimeoutMs;
+      while (Date.now() < deadline) {
+        cookies = await ctx.cookies();
+        if (cookies.some((c) => c.name === 'aws-waf-token')) break;
+        await page.waitForTimeout(1500);
+      }
       const header = cookies.map((c) => `${c.name}=${c.value}`).join('; ');
       if (!cookies.some((c) => c.name === 'aws-waf-token')) {
         throw new Error(
@@ -129,7 +134,7 @@ export class Session {
       this.cookieHeader = header;
       this.harvestedAt = Date.now();
       await this.#saveCache();
-      this.log.info('session: token acquired');
+      this.log.info(`session: token acquired in ${((Date.now() - startedAt) / 1000).toFixed(1)}s`);
     } finally {
       if (browser) await browser.close().catch(() => {});
     }
