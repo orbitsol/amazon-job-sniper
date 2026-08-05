@@ -41,7 +41,12 @@ async function main() {
   if (proxy) log.info(`  proxy:    ${proxy.label}`);
 
   const seen = await new SeenStore(cfg.seenFile).load();
-  const session = new Session({ log, proxy });
+  const session = new Session({
+    log,
+    proxy,
+    cacheFile: cfg.sessionFile,
+    maxAgeMs: cfg.sessionMaxAgeHours * 60 * 60 * 1000,
+  });
   const amazon = new AmazonHiring({
     session,
     log,

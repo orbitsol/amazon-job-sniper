@@ -45,8 +45,11 @@ export function loadConfig() {
     );
   }
 
+  const dataDir = process.env.DATA_DIR || path.join(ROOT, 'data');
+
   return {
     root: ROOT,
+    dataDir,
     zip: String(process.env.ZIP || cfg.zip || '75126'),
     lat: cfg.lat ?? null,
     lng: cfg.lng ?? null,
@@ -63,9 +66,11 @@ export function loadConfig() {
     mentionUserId: process.env.DISCORD_USER_ID || cfg.discordUserId || null,
     mentionRoleId: process.env.DISCORD_ROLE_ID || cfg.discordRoleId || null,
     proxyUrl: process.env.PROXY_URL || cfg.proxyUrl || null,
-    seenFile: process.env.DATA_DIR
-      ? path.join(process.env.DATA_DIR, 'seen.json')
-      : path.join(ROOT, 'data', 'seen.json'),
+    seenFile: path.join(dataDir, 'seen.json'),
+    sessionFile: path.join(dataDir, 'session.json'),
+    // The issued aws-waf-token is valid ~96h; re-harvesting costs ~14MB, so
+    // reuse it for a long time and let the 403 handler catch early expiry.
+    sessionMaxAgeHours: Number(process.env.SESSION_MAX_AGE_HOURS || cfg.sessionMaxAgeHours || 12),
     heartbeatMinutes: Number(cfg.heartbeatMinutes ?? 0),
     alertOnFirstRun: Boolean(cfg.alertOnFirstRun ?? false),
     // Run a single check then exit — for cron-style hosts (GitHub Actions).
