@@ -1,3 +1,34 @@
+# ⚠️ Read this first — tested, not theorised
+
+Amazon blocks cloud datacenter IPs **at CloudFront, before the WAF challenge is
+even served**. Measured 2026-08-05 from a GitHub Actions runner
+(`4.154.236.230`, Azure):
+
+```
+page title : ERROR: The request could not be satisfied
+403 ERROR — Request blocked.
+waf calls  : NONE      cookies: 0      token: NO
+```
+
+The same script from a home broadband IP gets a token in **3.9 seconds** and a
+working API session.
+
+This is not a tuning problem. There is no timeout or user-agent that fixes it —
+the connection is refused before any of the bot's logic runs. Treat every
+datacenter host (Actions, Fly, Oracle, GCP, AWS, Azure) as blocked until proven
+otherwise from that specific IP. Run `node scripts/diagnose-waf.js` on any host
+before trusting it.
+
+**Therefore, in order of preference:**
+
+1. **Run it at home** — a laptop or Raspberry Pi on residential internet. Free,
+   and the only configuration verified to work end to end.
+2. **Any cloud host + a residential proxy** — set `PROXY_URL`. The proxy carries
+   both the Chromium session and the API calls.
+3. **Cloud host alone** — verified broken. Don't.
+
+---
+
 # Running it off your Mac
 
 The bot needs headless Chromium to get past AWS WAF, so it needs a host with
@@ -138,9 +169,24 @@ GCP's always-free tier includes one `e2-micro` (1GB) in `us-west1`,
 the setup script adds. Same steps: create an Ubuntu 22.04 e2-micro, then `scp`
 the folder up and run `deploy/setup-vps.sh`. Also needs a card on file.
 
-## Free with no card at all: GitHub Actions
+## Free with no card at all: GitHub Actions — BLOCKED without a proxy
 
-Already wired up in `.github/workflows/snipe.yml`.
+Already wired up in `.github/workflows/snipe.yml`, and the repo is live at
+`github.com/orbitsol/amazon-job-sniper`. **But GitHub's runner IPs are blocked by
+Amazon** (see the top of this file). The workflow will run, fail the check, and
+go red until you add a proxy:
+
+```bash
+gh secret set PROXY_URL --repo orbitsol/amazon-job-sniper
+```
+
+Verify any host with:
+
+```bash
+gh workflow run "Snipe Amazon jobs" -f diagnose=true
+```
+
+Everything below applies once the IP problem is solved.
 
 ```bash
 cd ~/amazon-job-sniper
