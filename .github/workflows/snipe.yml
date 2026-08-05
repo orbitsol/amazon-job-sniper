@@ -84,6 +84,12 @@ jobs:
           PROXY_URL: ${{ secrets.PROXY_URL }}
         run: node src/index.js --once
 
+      # Guarantee the path exists, otherwise the cache save warns and the next
+      # run would start with no memory of what it already alerted on.
+      - name: Ensure data dir
+        if: always()
+        run: mkdir -p data
+
       - name: Save seen store
         if: always()
         uses: actions/cache/save@v4
