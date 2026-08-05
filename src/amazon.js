@@ -84,12 +84,12 @@ const JOB_DETAIL = `query getJobDetail($getJobDetailRequest: GetJobDetailRequest
 export class WafBlockedError extends Error {}
 
 export class AmazonHiring {
-  constructor({ session, log, country = 'United States', locale = 'en-US', proxy = null }) {
+  constructor({ session, log, country = 'United States', locale = 'en-US', pool = null }) {
     this.session = session;
     this.log = log;
     this.country = country;
     this.locale = locale;
-    this.proxy = proxy;
+    this.pool = pool;
   }
 
   async #gql(operationName, query, variables, { retryOnWaf = true } = {}) {
@@ -111,7 +111,7 @@ export class AmazonHiring {
       },
       body: JSON.stringify({ operationName, query, variables }),
       signal: AbortSignal.timeout(30000),
-      dispatcher: this.proxy?.dispatcher,
+      dispatcher: this.pool?.current()?.dispatcher,
     });
 
     const text = await res.text();
@@ -128,7 +128,10 @@ export class AmazonHiring {
 
     if (wafBlocked) {
       if (!retryOnWaf) throw new WafBlockedError(`${operationName}: WAF blocked`);
-      this.log.warn('waf: blocked — refreshing session token');
+      this.log.warn('waf: blocked — rotating proxy and refreshing session token');
+      // A block usually means this exit IP is flagged, so change IP before
+      // spending ~14MB on another harvest.
+      this.pool?.rotate('waf block');
       await this.session.refresh();
       return this.#gql(operationName, query, variables, { retryOnWaf: false });
     }

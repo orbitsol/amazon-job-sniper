@@ -24,9 +24,9 @@ const WARMUP_URL = 'https://hiring.amazon.com/search/warehouse-jobs';
 const DEFAULT_MAX_AGE = 12 * 60 * 60 * 1000; // 12h, well inside the 96h TTL
 
 export class Session {
-  constructor({ log, proxy = null, maxAgeMs = DEFAULT_MAX_AGE, cacheFile = null }) {
+  constructor({ log, pool = null, maxAgeMs = DEFAULT_MAX_AGE, cacheFile = null }) {
     this.log = log;
-    this.proxy = proxy;
+    this.pool = pool;
     this.maxAgeMs = maxAgeMs;
     this.cacheFile = cacheFile;
     this.cookieHeader = null;
@@ -95,7 +95,7 @@ export class Session {
     try {
       browser = await chromium.launch({
         headless: true,
-        proxy: this.proxy?.playwright,
+        proxy: this.pool?.current()?.playwright,
         // Shared-memory is tiny in most containers; without this Chromium
         // crashes on load in Docker.
         args: ['--disable-dev-shm-usage', '--no-sandbox'],

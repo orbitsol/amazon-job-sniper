@@ -4,3 +4,5 @@ data
 .git
 *.log
 com.niv.amazonjobsniper.plist
+proxies.txt
+proxies.working.txt

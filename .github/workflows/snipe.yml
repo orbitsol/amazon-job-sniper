@@ -82,6 +82,9 @@ jobs:
 
       - name: Diagnose WAF
         if: ${{ inputs.diagnose }}
+        env:
+          PROXY_URL: ${{ secrets.PROXY_URL }}
+          PROXY_LIST: ${{ secrets.PROXY_LIST }}
         run: node scripts/diagnose-waf.js
 
       - name: Check for openings
@@ -90,6 +93,7 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           DISCORD_USER_ID: ${{ secrets.DISCORD_USER_ID }}
           PROXY_URL: ${{ secrets.PROXY_URL }}
+          PROXY_LIST: ${{ secrets.PROXY_LIST }}
         run: node src/index.js --once
 
       # Guarantee the path exists, otherwise the cache save warns and the next

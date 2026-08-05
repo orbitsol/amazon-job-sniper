@@ -4,12 +4,25 @@
  * GraphQL call succeeds. Run locally and on the target host to compare.
  */
 import { chromium } from 'playwright';
+import { ProxyPool } from '../src/proxy.js';
 
 const UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
 
-const ip = await fetch('https://api.ipify.org?format=json')
+const log = { info: console.log, warn: console.log, error: console.error };
+const pool = ProxyPool.fromConfig({
+  proxyUrl: process.env.PROXY_URL,
+  proxyList: process.env.PROXY_LIST,
+  proxyFile: process.env.PROXY_FILE || 'proxies.txt',
+  log,
+});
+const proxy = pool?.current() ?? null;
+console.log('proxy    :', proxy ? `${proxy.label} (${pool.size} in pool)` : 'none (direct)');
+
+const ip = await fetch('https://api.ipify.org?format=json', {
+  dispatcher: proxy?.dispatcher,
+})
   .then((r) => r.json())
   .then((j) => j.ip)
   .catch(() => 'unknown');
@@ -17,6 +30,7 @@ console.log('egress IP:', ip);
 
 const browser = await chromium.launch({
   headless: true,
+  proxy: proxy?.playwright,
   args: ['--disable-dev-shm-usage', '--no-sandbox'],
 });
 const ctx = await browser.newContext({ userAgent: UA, locale: 'en-US' });
@@ -81,6 +95,7 @@ if (token) {
       'user-agent': UA,
       cookie: cookies.map((c) => `${c.name}=${c.value}`).join('; '),
     },
+    dispatcher: proxy?.dispatcher,
     body: JSON.stringify({
       operationName: 'searchJobCardsByLocation',
       variables: {

@@ -66,6 +66,10 @@ export function loadConfig() {
     mentionUserId: process.env.DISCORD_USER_ID || cfg.discordUserId || null,
     mentionRoleId: process.env.DISCORD_ROLE_ID || cfg.discordRoleId || null,
     proxyUrl: process.env.PROXY_URL || cfg.proxyUrl || null,
+    // Bulk list: newline/comma separated in PROXY_LIST, or a file of one
+    // proxy per line. Sellers hand these out as host:port:user:pass.
+    proxyList: process.env.PROXY_LIST || null,
+    proxyFile: process.env.PROXY_FILE || cfg.proxyFile || path.join(ROOT, 'proxies.txt'),
     seenFile: path.join(dataDir, 'seen.json'),
     sessionFile: path.join(dataDir, 'session.json'),
     // The issued aws-waf-token is valid ~96h; re-harvesting costs ~14MB, so

@@ -66,6 +66,40 @@ npm test                       # your configured ZIP
 npm test -- --zip 60085 --radius 60   # somewhere busier, to sanity-check
 ```
 
+## Proxies (bulk lists supported)
+
+Amazon blocks datacenter IPs outright, so any cloud host needs residential
+proxies. Put them one per line in `proxies.txt` (gitignored):
+
+```
+gate.provider.com:7777:user-session-abc:password
+gate.provider.com:7778:user-session-def:password
+```
+
+Accepted formats: `host:port`, `host:port:user:pass`, `user:pass@host:port`,
+or a full `http://` / `socks5://` URL. Blank lines and `#` comments are ignored.
+
+Find which ones Amazon actually accepts before relying on them — this costs
+~13KB per proxy, versus ~14MB for a full token harvest:
+
+```bash
+node scripts/test-proxies.js                      # reads proxies.txt
+node scripts/test-proxies.js --concurrency 30     # bigger lists
+```
+
+Working entries are written to `proxies.working.txt`. Point the bot at them:
+
+```bash
+echo "PROXY_FILE=proxies.working.txt" >> .env
+```
+
+The bot rotates to the next proxy automatically whenever one gets WAF-blocked.
+
+**Use sticky sessions.** The harvested token is reused for 12h and costs ~14MB
+to obtain, while polls cost ~2KB. If your proxies rotate IP on every request the
+token gets rejected constantly and bandwidth goes from ~1GB/month to ~120GB.
+Most providers expose stickiness as a session ID inside the username.
+
 ## Configuration (`config.json`)
 
 | Key | Default | Meaning |

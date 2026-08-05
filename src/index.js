@@ -2,7 +2,7 @@ import { AmazonHiring } from './amazon.js';
 import { geocodeZip, loadConfig } from './config.js';
 import { log } from './log.js';
 import { DiscordNotifier } from './notify.js';
-import { parseProxy } from './proxy.js';
+import { ProxyPool } from './proxy.js';
 import { Session } from './session.js';
 import { SeenStore } from './store.js';
 
@@ -37,13 +37,18 @@ async function main() {
   if (cfg.minPay != null) log.info(`  min pay:  $${cfg.minPay}/hr`);
   if (cfg.titleIncludes.length) log.info(`  titles:   ${cfg.titleIncludes.join(', ')}`);
 
-  const proxy = parseProxy(cfg.proxyUrl);
-  if (proxy) log.info(`  proxy:    ${proxy.label}`);
+  const pool = ProxyPool.fromConfig({
+    proxyUrl: cfg.proxyUrl,
+    proxyList: cfg.proxyList,
+    proxyFile: cfg.proxyFile,
+    log,
+  });
+  if (pool) log.info(`  proxy:    ${pool.size} proxy(s), starting on ${pool.current().label}`);
 
   const seen = await new SeenStore(cfg.seenFile).load();
   const session = new Session({
     log,
-    proxy,
+    pool,
     cacheFile: cfg.sessionFile,
     maxAgeMs: cfg.sessionMaxAgeHours * 60 * 60 * 1000,
   });
@@ -52,7 +57,7 @@ async function main() {
     log,
     country: cfg.country,
     locale: cfg.locale,
-    proxy,
+    pool,
   });
   const discord = new DiscordNotifier({
     webhookUrl: cfg.webhookUrl,
