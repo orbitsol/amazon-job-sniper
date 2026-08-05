@@ -1,0 +1,15 @@
+{
+  "zip": "75126",
+  "radiusMiles": 50,
+  "pollSeconds": 20,
+  "jitterSeconds": 5,
+  "locale": "en-US",
+  "country": "United States",
+
+  "titleIncludes": [],
+  "minPay": null,
+  "maxDistanceMiles": null,
+
+  "heartbeatMinutes": 0,
+  "alertOnFirstRun": false
+}

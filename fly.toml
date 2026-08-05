@@ -1,0 +1,23 @@
+# Fly.io deployment. App name must be globally unique — change it if taken.
+app = "amazon-job-sniper"
+primary_region = "dfw"   # Dallas, closest to ZIP 75126
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  DATA_DIR = "/data"
+
+# Persistent disk so the seen-store survives restarts and you don't miss a
+# posting during a redeploy.
+[mounts]
+  source = "sniper_data"
+  destination = "/data"
+
+# This is a worker, not a web server: no public ports, and it must never sleep.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
+
+[processes]
+  app = "node src/index.js"

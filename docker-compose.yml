@@ -1,0 +1,12 @@
+# For a plain VPS: `docker compose up -d`
+services:
+  sniper:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+    volumes:
+      - sniper_data:/data
+volumes:
+  sniper_data:

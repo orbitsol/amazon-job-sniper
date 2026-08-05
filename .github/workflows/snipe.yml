@@ -1,0 +1,77 @@
+# Free, no credit card. Runs one check per scheduled trigger.
+#
+# Trade-off you are accepting: GitHub's minimum cron interval is 5 minutes, and
+# scheduled runs are routinely delayed 10-20 minutes when the platform is busy.
+# This will find openings, but it will not win races against anyone polling
+# continuously. Use a always-on host if you can.
+name: Snipe Amazon jobs
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+# Never let two checks overlap — that would double-ping.
+concurrency:
+  group: snipe
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci --omit=dev
+
+      # Chromium is ~130MB; downloading it every 5 minutes would dominate the
+      # run time. Cache it against the Playwright version so it only re-downloads
+      # when that changes.
+      - name: Get Playwright version
+        id: pw
+        run: echo "version=$(node -p "require('./node_modules/playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Chromium
+        id: pwcache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      - name: Install Chromium
+        run: |
+          if [ "${{ steps.pwcache.outputs.cache-hit }}" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
+
+      # Carry the seen-store between runs so we don't re-ping old listings.
+      # Cache keys are immutable, so write a new one each run and restore the
+      # most recent via the prefix.
+      - name: Restore seen store
+        uses: actions/cache/restore@v4
+        with:
+          path: data
+          key: seen-${{ github.run_id }}
+          restore-keys: seen-
+
+      - name: Check for openings
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_USER_ID: ${{ secrets.DISCORD_USER_ID }}
+          PROXY_URL: ${{ secrets.PROXY_URL }}
+        run: node src/index.js --once
+
+      - name: Save seen store
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data
+          key: seen-${{ github.run_id }}
